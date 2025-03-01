@@ -57,6 +57,13 @@ st.markdown("""
     .stMarkdown {
         color: #ff4b4b;
     }
+
+    /* Code editor styling */
+    .stCodeEditor {
+        background: #1f1f1f;
+        border-radius: 10px;
+        box-shadow: inset 4px 4px 8px #151515, inset -4px -4px 8px #292929;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -69,7 +76,7 @@ system_monitor.store_metrics()
 
 # Title and description
 st.title("🤖 AI Agent Control Dashboard")
-st.markdown("Monitor and control your AI agents running on Ollama")
+st.markdown("Monitor and control your AI agents' code crawling and deployment")
 
 # System Status Section
 st.header("System Status")
@@ -85,21 +92,6 @@ if metrics:
 
     with col3:
         st.metric("Memory Usage", f"{metrics.memory_usage}%")
-
-# Folder Creation Section
-st.header("Folder Management")
-col1, col2 = st.columns(2)
-
-with col1:
-    folder_name = st.text_input("Enter folder name", key="folder_name")
-    if st.button("Create Folder"):
-        if folder_name:
-            if agent_manager.create_folder(folder_name):
-                st.success(f"Folder '{folder_name}' created successfully!")
-            else:
-                st.error("Failed to create folder")
-        else:
-            st.warning("Please enter a folder name")
 
 # Agent Control Section
 st.header("Agent Control")
@@ -119,11 +111,79 @@ with col2:
         system_monitor.restart_ollama()
         st.success("Ollama restarted successfully!")
 
+# Code Management Section
+st.header("Code Management")
+tabs = st.tabs(["Code Editor", "Deployment", "History"])
+
+with tabs[0]:
+    # Code Editor
+    st.subheader("Micro IDE")
+    selected_agent = st.selectbox("Select Agent", agent_manager.agent_names)
+
+    code_snippets = agent_manager.get_code_snippets(selected_agent)
+    if code_snippets:
+        selected_snippet = st.selectbox(
+            "Select File",
+            [snippet.filename for snippet in code_snippets]
+        )
+
+        selected_content = next(
+            (s.content for s in code_snippets if s.filename == selected_snippet),
+            ""
+        )
+
+        edited_code = st.code_editor(
+            selected_content,
+            language="python",
+            key="code_editor"
+        )
+
+        if st.button("Save Changes"):
+            if agent_manager.save_code_snippet(
+                selected_snippet,
+                edited_code,
+                "python",
+                selected_agent
+            ):
+                st.success("Code saved successfully!")
+            else:
+                st.error("Failed to save code")
+
+with tabs[1]:
+    # Deployment
+    st.subheader("Deploy Code")
+    deploy_agent = st.selectbox("Select Agent for Deployment", agent_manager.agent_names)
+    commit_message = st.text_input("Commit Message", "Update agent code")
+
+    if st.button("Deploy to GitHub"):
+        snippets = agent_manager.get_code_snippets(deploy_agent)
+        if agent_manager.deploy_to_github(deploy_agent, snippets, commit_message):
+            st.success("Code deployed successfully!")
+        else:
+            st.error("Deployment failed")
+
+with tabs[2]:
+    # History
+    st.subheader("Deployment History")
+    history_agent = st.selectbox("Select Agent History", agent_manager.agent_names)
+    deployment_logs = agent_manager.get_deployment_logs(history_agent)
+
+    for log in deployment_logs:
+        with st.expander(f"Deployment {log.created_at}"):
+            st.write(f"Status: {log.deployment_status}")
+            st.write(f"Commit: {log.commit_message}")
+            if log.github_url:
+                st.write(f"GitHub URL: {log.github_url}")
+
 # Agent Status Section
 st.header("Agent Status")
 agent_statuses = agent_manager.get_agent_statuses()
 for agent, status in agent_statuses.items():
-    st.markdown(f"**{agent}**: {'🟢 Active' if status else '🔴 Inactive'}")
+    with st.expander(f"Agent: {agent}"):
+        st.write(f"Status: {'🟢 Active' if status['status'] else '🔴 Inactive'}")
+        st.write(f"Current Task: {status['task']}")
+        if status['last_updated']:
+            st.write(f"Last Updated: {status['last_updated']}")
 
 # Log Output Section
 st.header("Log Output")

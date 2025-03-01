@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -32,6 +32,29 @@ class AgentStatus(Base):
     agent_name = Column(String)
     status = Column(Boolean)
     last_updated = Column(DateTime, default=datetime.utcnow)
+    current_task = Column(String)
+    code_repository = Column(String)
+
+class CodeSnippet(Base):
+    __tablename__ = 'code_snippets'
+
+    id = Column(Integer, primary_key=True)
+    filename = Column(String)
+    content = Column(Text)
+    language = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    agent_name = Column(String)
+    status = Column(String)  # crawled, edited, deployed
+
+class DeploymentLog(Base):
+    __tablename__ = 'deployment_logs'
+
+    id = Column(Integer, primary_key=True)
+    agent_name = Column(String)
+    deployment_status = Column(String)
+    commit_message = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    github_url = Column(String)
 
 class WorkspaceFolder(Base):
     __tablename__ = 'workspace_folders'
