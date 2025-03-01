@@ -4,16 +4,15 @@ import os
 import signal
 import sys
 from logger_config import logger
-from database import Session, AgentStatus, CodeSnippet, DeploymentLog
+from database import Session, AgentStatus, CodeSnippet, DeploymentLog, AgentTask
 from datetime import datetime
-import requests
-import base64
+from agent_interaction import AgentInteraction
 
 class AgentManager:
     def __init__(self):
         self.agent_process = None
         self.agent_names = ["Scout", "Editor", "Uploader", "Clicker", "Transaction"]
-        self.github_token = os.getenv('GITHUB_TOKEN')
+        self.interactions = {name: AgentInteraction(name) for name in self.agent_names}
 
     def start_agents(self):
         """Start the AI agents"""
@@ -104,28 +103,68 @@ class AgentManager:
             return statuses
         except Exception as e:
             logger.error(f"Error getting agent statuses: {e}")
-            return {agent: {'status': False, 'task': 'Error', 'last_updated': None} 
+            return {agent: {'status': False, 'task': 'Error', 'last_updated': None}
                    for agent in self.agent_names}
 
+    def agent_message(self, agent_name, message):
+        """Send a message from an agent"""
+        if agent_name in self.interactions:
+            return self.interactions[agent_name].send_message(message)
+        return None
+
     def save_code_snippet(self, filename, content, language, agent_name):
-        """Save a code snippet to the database"""
+        """Save a code snippet with proper formatting"""
         try:
             session = Session()
+            # Format code as shown in the logs
+            formatted_content = self.interactions[agent_name].code_block(content, filename)
+
             snippet = CodeSnippet(
                 filename=filename,
-                content=content,
+                content=formatted_content,
                 language=language,
                 agent_name=agent_name,
                 status='crawled'
             )
             session.add(snippet)
+
+            # Add task record
+            task = AgentTask(
+                agent_name=agent_name,
+                task_type='code_save',
+                task_status='completed',
+                result=f"Saved {filename}"
+            )
+            session.add(task)
+
             session.commit()
             session.close()
-            logger.info(f"Code snippet saved: {filename}")
+
+            # Send agent message about the save
+            self.agent_message(agent_name, f"Saved code to {filename}")
             return True
         except Exception as e:
             logger.error(f"Error saving code snippet: {e}")
             return False
+
+    def get_agent_conversation(self, agent_name):
+        """Get recent conversation history for an agent"""
+        try:
+            session = Session()
+            tasks = session.query(AgentTask).filter_by(
+                agent_name=agent_name
+            ).order_by(AgentTask.created_at.desc()).limit(10).all()
+
+            history = []
+            for task in tasks:
+                if task.result:
+                    history.append(self.interactions[agent_name].format_message(task.result))
+
+            session.close()
+            return history
+        except Exception as e:
+            logger.error(f"Error getting agent conversation: {e}")
+            return []
 
     def get_code_snippets(self, agent_name=None):
         """Get code snippets from database"""

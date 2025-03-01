@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -18,7 +18,7 @@ Session = sessionmaker(bind=engine)
 
 class SystemMetrics(Base):
     __tablename__ = 'system_metrics'
-    
+
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     cpu_usage = Column(Float)
@@ -27,7 +27,7 @@ class SystemMetrics(Base):
 
 class AgentStatus(Base):
     __tablename__ = 'agent_status'
-    
+
     id = Column(Integer, primary_key=True)
     agent_name = Column(String)
     status = Column(Boolean)
@@ -45,6 +45,20 @@ class CodeSnippet(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     agent_name = Column(String)
     status = Column(String)  # crawled, edited, deployed
+    binary_data = Column(LargeBinary, nullable=True)  # For storing binary files
+    file_type = Column(String)  # For storing file type information
+
+class AgentTask(Base):
+    __tablename__ = 'agent_tasks'
+
+    id = Column(Integer, primary_key=True)
+    agent_name = Column(String)
+    task_type = Column(String)  # crawl, process, deploy
+    task_status = Column(String)  # pending, running, completed, failed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    result = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
 
 class DeploymentLog(Base):
     __tablename__ = 'deployment_logs'
@@ -58,7 +72,7 @@ class DeploymentLog(Base):
 
 class WorkspaceFolder(Base):
     __tablename__ = 'workspace_folders'
-    
+
     id = Column(Integer, primary_key=True)
     folder_name = Column(String, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow)

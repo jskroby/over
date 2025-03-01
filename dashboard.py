@@ -99,8 +99,8 @@ if metrics:
 
     # Performance graph
     st.plotly_chart(
-        px.line(metrics_history, 
-                x='Time', 
+        px.line(metrics_history,
+                x='Time',
                 y=['CPU', 'Memory'],
                 title='System Performance',
                 template='plotly_dark'),
@@ -159,6 +159,18 @@ for agent, info in status.items():
         st.write("🟢 Active" if info['status'] else "🔴 Inactive")
     with cols[2]:
         st.write(info['task'])
+
+# Agent Conversations
+st.header("Agent Conversations")
+for agent in agent_manager.agent_names:
+    with st.expander(f"🤖 {agent} Conversation History", expanded=False):
+        conversations = agent_manager.get_agent_conversation(agent)
+        if conversations:
+            for msg in conversations:
+                st.code(msg, language="plain")
+        else:
+            st.info("No conversation history yet")
+
 
 # Logs
 with st.expander("Logs", expanded=False):
