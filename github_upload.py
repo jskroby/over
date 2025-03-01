@@ -16,6 +16,20 @@ def upload_to_github():
     if not github_token:
         github_token = input("Enter your GitHub personal access token: ")
         
+        # Save token to .env file if provided
+        if github_token:
+            save_token = input("Would you like to save this token for future use? (y/n): ")
+            if save_token.lower() == 'y':
+                try:
+                    with open('.env', 'a+') as env_file:
+                        env_file.seek(0)
+                        content = env_file.read()
+                        if 'GITHUB_TOKEN' not in content:
+                            env_file.write(f"\nGITHUB_TOKEN='{github_token}'")
+                            print("Token saved to .env file")
+                except Exception as e:
+                    print(f"Warning: Could not save token to .env file: {e}")
+        
     if not github_token:
         print("Error: GitHub token is required")
         return False
