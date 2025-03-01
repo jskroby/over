@@ -21,3 +21,13 @@ venv/
 # Replit
 .replit/
 .pythonlibs/
+
+# Generated files
+repository_diagram
+repository_diagram.png
+*.log
+
+# OAuth credentials
+client_secrets.json
+token.pickle
+github_token.txt
