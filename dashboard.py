@@ -24,50 +24,93 @@ st.set_page_config(
     page_title="AI Agent Dashboard",
     page_icon="🤖",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS for minimalistic design with orange gradient
+# Custom CSS for dynamic gradients and animations
 st.markdown("""
 <style>
-    /* Main theme */
+    /* Main theme with animated gradient */
     .main {
-        background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+        background: linear-gradient(-45deg, #1a1a1a, #0a0a0a, #2d1f1f, #1f2d1f);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
     }
 
-    /* Metric cards */
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* Cabinet style navigation */
+    .sidebar .sidebar-content {
+        background: linear-gradient(165deg, #2d1f1f 0%, #1a1a1a 100%);
+        box-shadow: 4px 0 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Animated metric cards */
     div[data-testid="stMetric"] {
         background: linear-gradient(145deg, #ff4b4b22, #ff8f1c22);
-        border-radius: 8px;
-        padding: 15px;
+        border-radius: 12px;
+        padding: 20px;
         border: 1px solid #ff4b4b44;
+        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.1);
+        transition: all 0.3s ease;
     }
 
-    /* Buttons */
+    div[data-testid="stMetric"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(255, 75, 75, 0.15);
+    }
+
+    /* Buttons with gradient animation */
     .stButton > button {
-        background: linear-gradient(145deg, #ff4b4b, #ff8f1c);
+        background: linear-gradient(45deg, #ff4b4b, #ff8f1c);
+        background-size: 200% 200%;
+        animation: gradient 5s ease infinite;
         color: white;
         border: none;
-        border-radius: 6px;
-        padding: 8px 16px;
+        border-radius: 8px;
+        padding: 10px 20px;
         transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.2);
     }
 
     .stButton > button:hover {
         opacity: 0.9;
         transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(255, 75, 75, 0.3);
     }
 
-    /* Headers */
+    /* Headers with gradient text */
     h1, h2, h3 {
-        color: #ff4b4b;
+        background: linear-gradient(45deg, #ff4b4b, #ff8f1c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         font-weight: 600;
     }
 
-    /* Code editor */
-    .stCodeEditor {
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: transparent;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background: linear-gradient(145deg, #2d1f1f, #1a1a1a);
         border-radius: 8px;
-        overflow: hidden;
+        padding: 8px 16px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Card container */
+    .card-container {
+        background: linear-gradient(145deg, #1f1f1f66, #25252566);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        margin: 10px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -79,43 +122,60 @@ task_scheduler = TaskScheduler()
 storage_manager = StorageManager()
 task_scheduler.start()
 
-# Store current metrics
-system_monitor.store_metrics()
+# Sidebar Navigation
+with st.sidebar:
+    st.title("🤖 Agent Hub")
 
-# Title
-st.title("🤖 AI Agent Dashboard")
+    # Profile Section
+    st.image("https://picsum.photos/200", width=100)  # Placeholder profile image
+    st.subheader("Welcome back!")
 
-# System Metrics
-metrics = system_monitor.get_latest_metrics()
-if metrics:
-    # Create metrics history for visualization
-    metrics_history = pd.DataFrame({
-        'Time': [metrics.timestamp],
-        'CPU': [metrics.cpu_usage],
-        'Memory': [metrics.memory_usage]
-    })
-
-    # System metrics cards
-    cols = st.columns(3)
-    with cols[0]:
-        st.metric("Status", "Active 🟢" if metrics.ollama_status else "Inactive 🔴")
-    with cols[1]:
-        st.metric("CPU", f"{metrics.cpu_usage}%")
-    with cols[2]:
-        st.metric("Memory", f"{metrics.memory_usage}%")
-
-    # Performance graph
-    st.plotly_chart(
-        px.line(metrics_history,
-                x='Time',
-                y=['CPU', 'Memory'],
-                title='System Performance',
-                template='plotly_dark'),
-        use_container_width=True
+    # Navigation
+    selected_page = st.radio(
+        "Navigation",
+        ["Dashboard", "My Agents", "Begin Project", "Work on Project", "Project Done", "Stats & Analytics"]
     )
 
-# Agent Control
-with st.expander("Agent Control", expanded=True):
+# Main Content Area
+if selected_page == "Dashboard":
+    st.title("Dashboard Overview")
+
+    # System Metrics
+    metrics = system_monitor.get_latest_metrics()
+    if metrics:
+        # Create metrics history for visualization
+        metrics_history = pd.DataFrame({
+            'Time': [metrics.timestamp],
+            'CPU': [metrics.cpu_usage],
+            'Memory': [metrics.memory_usage]
+        })
+
+        # System metrics cards in a grid
+        st.markdown('<div class="card-container">', unsafe_allow_html=True)
+        cols = st.columns(3)
+        with cols[0]:
+            st.metric("System Status", "Active 🟢" if metrics.ollama_status else "Inactive 🔴")
+        with cols[1]:
+            st.metric("CPU Usage", f"{metrics.cpu_usage}%")
+        with cols[2]:
+            st.metric("Memory Usage", f"{metrics.memory_usage}%")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Performance graph
+        st.plotly_chart(
+            px.line(metrics_history,
+                    x='Time',
+                    y=['CPU', 'Memory'],
+                    title='System Performance',
+                    template='plotly_dark'),
+            use_container_width=True
+        )
+
+elif selected_page == "My Agents":
+    st.title("My Agents")
+
+    # Agent Control Panel
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🚀 " + ("Stop Agents" if agent_manager.is_running() else "Start Agents")):
@@ -127,35 +187,79 @@ with st.expander("Agent Control", expanded=True):
                 st.success("Agents started")
 
     with col2:
-        if st.button("🔄 Restart Ollama"):
+        if st.button("🔄 Restart System"):
             system_monitor.restart_ollama()
-            st.success("Ollama restarted")
+            st.success("System restarted")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Code Management
-with st.expander("Code Management", expanded=True):
-    tabs = st.tabs(["Editor", "Deploy"])
+    # Agent Status and Conversations
+    for agent in agent_manager.agent_names:
+        st.markdown(f'<div class="card-container">', unsafe_allow_html=True)
+        st.subheader(f"🤖 {agent}")
+        status = agent_manager.get_agent_statuses()[agent]
 
-    with tabs[0]:
-        selected_agent = st.selectbox("Agent", agent_manager.agent_names)
-        code_snippets = agent_manager.get_code_snippets(selected_agent)
+        cols = st.columns([1, 2])
+        with cols[0]:
+            st.write("Status:", "🟢 Active" if status['status'] else "🔴 Inactive")
+        with cols[1]:
+            st.write("Current Task:", status['task'])
 
-        if code_snippets:
-            selected_file = st.selectbox("File", [s.filename for s in code_snippets])
-            code = next((s.content for s in code_snippets if s.filename == selected_file), "")
+        conversations = agent_manager.get_agent_conversation(agent)
+        if conversations:
+            with st.expander("View Conversation History"):
+                for msg in conversations:
+                    st.code(msg, language="plain")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-            edited_code = st.code_editor(code, language="python")
-            if st.button("Save"):
-                if agent_manager.save_code_snippet(selected_file, edited_code, "python", selected_agent):
-                    st.success("Saved")
+    #Code Management integrated here
+    with st.expander("Code Management", expanded=True):
+        tabs = st.tabs(["Editor", "Deploy"])
 
-    with tabs[1]:
-        deploy_agent = st.selectbox("Deploy Agent", agent_manager.agent_names)
-        commit_msg = st.text_input("Commit Message")
-        if st.button("Deploy"):
-            if agent_manager.deploy_to_github(deploy_agent, [], commit_msg):
-                st.success("Deployed")
+        with tabs[0]:
+            selected_agent = st.selectbox("Agent", agent_manager.agent_names)
+            code_snippets = agent_manager.get_code_snippets(selected_agent)
 
-# Task Scheduling
+            if code_snippets:
+                selected_file = st.selectbox("File", [s.filename for s in code_snippets])
+                code = next((s.content for s in code_snippets if s.filename == selected_file), "")
+
+                edited_code = st.code_editor(code, language="python")
+                if st.button("Save"):
+                    if agent_manager.save_code_snippet(selected_file, edited_code, "python", selected_agent):
+                        st.success("Saved")
+
+        with tabs[1]:
+            deploy_agent = st.selectbox("Deploy Agent", agent_manager.agent_names)
+            commit_msg = st.text_input("Commit Message")
+            if st.button("Deploy"):
+                if agent_manager.deploy_to_github(deploy_agent, [], commit_msg):
+                    st.success("Deployed")
+
+
+elif selected_page == "Begin Project":
+    st.title("Begin New Project")
+    st.markdown('<div class="card-container">', unsafe_allow_html=True)
+    project_name = st.text_input("Project Name")
+    project_description = st.text_area("Project Description")
+    assigned_agents = st.multiselect("Assign Agents", agent_manager.agent_names)
+    if st.button("Start Project"):
+        st.success("Project created successfully!")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+elif selected_page == "Work on Project":
+    st.title("Current Projects")
+    # Add project management interface here
+
+elif selected_page == "Project Done":
+    st.title("Completed Projects")
+    # Add completed projects view here
+
+elif selected_page == "Stats & Analytics":
+    st.title("Analytics Dashboard")
+    # Add analytics and statistics here
+
+
+# Task Scheduling integrated here
 st.header("Task Scheduling")
 with st.expander("Schedule Tasks", expanded=True):
     schedule_tabs = st.tabs(["Create Task", "View Tasks"])
@@ -217,7 +321,7 @@ with st.expander("Schedule Tasks", expanded=True):
             st.info("No scheduled tasks found")
 
 
-# Storage Integration Section
+# Storage Integration integrated here
 st.header("Storage Integration")
 storage_col1, storage_col2 = st.columns(2)
 
@@ -264,7 +368,7 @@ if 'code' in st.query_params:
             st.success("Successfully authenticated with Google Drive!")
             st.rerun()
 
-# Backup section
+# Backup section integrated here
 if 'github_token' in st.session_state or 'gdrive_credentials' in st.session_state:
     st.header("Backup Agent Data")
     backup_col1, backup_col2 = st.columns(2)
@@ -279,7 +383,7 @@ if 'github_token' in st.session_state or 'gdrive_credentials' in st.session_stat
             else:
                 st.error("Failed to backup agent data")
 
-# Recent Activity
+# Recent Activity integrated here
 st.header("Recent Activity")
 activity_tabs = st.tabs(["Agent Status", "Task History", "Logs"])
 
