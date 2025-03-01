@@ -13,6 +13,8 @@ import logging
 from database import init_db
 from task_scheduler import TaskScheduler
 from datetime import datetime, timedelta
+from storage_handlers import StorageManager
+import json
 
 # Initialize database
 init_db()
@@ -74,6 +76,7 @@ st.markdown("""
 agent_manager = AgentManager()
 system_monitor = SystemMonitor()
 task_scheduler = TaskScheduler()
+storage_manager = StorageManager()
 task_scheduler.start()
 
 # Store current metrics
@@ -152,30 +155,6 @@ with st.expander("Code Management", expanded=True):
             if agent_manager.deploy_to_github(deploy_agent, [], commit_msg):
                 st.success("Deployed")
 
-# Agent Status
-status = agent_manager.get_agent_statuses()
-st.header("Agent Status")
-for agent, info in status.items():
-    cols = st.columns([1, 2, 2])
-    with cols[0]:
-        st.write(f"**{agent}**")
-    with cols[1]:
-        st.write("🟢 Active" if info['status'] else "🔴 Inactive")
-    with cols[2]:
-        st.write(info['task'])
-
-# Agent Conversations
-st.header("Agent Conversations")
-for agent in agent_manager.agent_names:
-    with st.expander(f"🤖 {agent} Conversation History", expanded=False):
-        conversations = agent_manager.get_agent_conversation(agent)
-        if conversations:
-            for msg in conversations:
-                st.code(msg, language="plain")
-        else:
-            st.info("No conversation history yet")
-
-
 # Task Scheduling
 st.header("Task Scheduling")
 with st.expander("Schedule Tasks", expanded=True):
@@ -237,8 +216,97 @@ with st.expander("Schedule Tasks", expanded=True):
         else:
             st.info("No scheduled tasks found")
 
-# Logs
-with st.expander("Logs", expanded=False):
+
+# Storage Integration Section
+st.header("Storage Integration")
+storage_col1, storage_col2 = st.columns(2)
+
+with storage_col1:
+    st.subheader("GitHub Integration")
+    if 'github_token' not in st.session_state:
+        if st.button("Login with GitHub"):
+            auth_url = storage_manager.initialize_github_oauth()
+            if auth_url:
+                st.markdown(f"[Click here to authorize GitHub]({auth_url})")
+            else:
+                st.error("Failed to initialize GitHub OAuth")
+    else:
+        st.success("Connected to GitHub! ✓")
+        if st.button("Logout from GitHub"):
+            del st.session_state['github_token']
+            st.rerun()
+
+with storage_col2:
+    st.subheader("Google Drive Integration")
+    if 'gdrive_credentials' not in st.session_state:
+        if st.button("Login with Google Drive"):
+            auth_url = storage_manager.initialize_gdrive_oauth()
+            if auth_url:
+                st.markdown(f"[Click here to authorize Google Drive]({auth_url})")
+            else:
+                st.error("Failed to initialize Google Drive OAuth")
+    else:
+        st.success("Connected to Google Drive! ✓")
+        if st.button("Logout from Google Drive"):
+            del st.session_state['gdrive_credentials']
+            st.rerun()
+
+# Handle OAuth callbacks
+st.query_params = st.experimental_get_query_params()
+if 'code' in st.query_params:
+    code = st.query_params['code'][0]
+    if 'state' in st.query_params:  # GitHub callback
+        if storage_manager.handle_github_callback(code, st.query_params['state'][0]):
+            st.success("Successfully authenticated with GitHub!")
+            st.rerun()
+    else:  # Google Drive callback
+        if storage_manager.handle_gdrive_callback(code):
+            st.success("Successfully authenticated with Google Drive!")
+            st.rerun()
+
+# Backup section
+if 'github_token' in st.session_state or 'gdrive_credentials' in st.session_state:
+    st.header("Backup Agent Data")
+    backup_col1, backup_col2 = st.columns(2)
+
+    with backup_col1:
+        backup_agent = st.selectbox("Select Agent to Backup", agent_manager.agent_names)
+
+    with backup_col2:
+        if st.button("Backup Agent Data"):
+            if storage_manager.backup_agent_data(backup_agent, f"data/{backup_agent}"):
+                st.success("Agent data backed up successfully!")
+            else:
+                st.error("Failed to backup agent data")
+
+# Recent Activity
+st.header("Recent Activity")
+activity_tabs = st.tabs(["Agent Status", "Task History", "Logs"])
+
+with activity_tabs[0]:
+    # Agent Status
+    for agent, info in agent_manager.get_agent_statuses().items():
+        cols = st.columns([1, 2, 2])
+        with cols[0]:
+            st.write(f"**{agent}**")
+        with cols[1]:
+            st.write("🟢 Active" if info['status'] else "🔴 Inactive")
+        with cols[2]:
+            st.write(info['task'])
+
+with activity_tabs[1]:
+    # Task History
+    for agent in agent_manager.agent_names:
+        st.subheader(f"{agent}'s Tasks")
+        conversations = agent_manager.get_agent_conversation(agent)
+        if conversations:
+            for msg in conversations:
+                st.code(msg, language="plain")
+        else:
+            st.info("No task history yet")
+
+with activity_tabs[2]:
+    # Logs
     st.code("\n".join(logger_config.get_recent_logs()))
 
 # Auto-refresh
