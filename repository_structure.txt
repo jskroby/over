@@ -1,0 +1,39 @@
+
+AI Agent System Repository Structure
+===================================
+
+Project Root
+├── .streamlit/
+│   └── config.toml
+├── agent_workspace/
+│   ├── Clicker/
+│   ├── Editor/
+│   ├── Scout/
+│   ├── Transaction/
+│   └── Uploader/
+├── attached_assets/
+│   └── (Various log files)
+├── agent_interaction.py - Handles formatting of agent messages
+├── agent_manager.py - Manages AI agents, their workspaces and interactions
+├── dashboard.py - Streamlit dashboard for monitoring and controlling agents
+├── database.py - Database models and connection management
+├── logger_config.py - Logging configuration
+├── storage_handlers.py - Handles storage to GitHub and Google Drive
+├── system_monitor.py - Monitors system resources and Ollama status
+├── task_scheduler.py - Schedules and executes agent tasks
+├── pyproject.toml - Python dependencies
+└── .replit - Replit configuration
+
+Key Components:
+1. Agent System - Multiple agents working together (Scout, Editor, Uploader, Clicker, Transaction)
+2. Storage System - Backup to GitHub and Google Drive
+3. Database - Tracking agent status, tasks, code snippets
+4. Web Dashboard - Monitoring and control interface
+5. Task Scheduler - Automated task scheduling system
+
+Main Dependencies:
+- autogen - AI agent framework
+- streamlit - Dashboard interface
+- sqlalchemy - Database ORM
+- psutil - System monitoring
+- github, google API clients - External integration
