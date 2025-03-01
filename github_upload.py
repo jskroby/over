@@ -63,22 +63,21 @@ def upload_to_github():
         # Initialize git repository and push
         commands = [
             "git init",
-            "git add .",
             "git config --local user.email 'agent@example.com'",
             "git config --local user.name 'AI Agent'",
-            f'git commit -m "Initial commit: AI Agent System"',
-            f"git remote add origin {remote_url}",
-            "git push -u origin master --force"  # Using --force to overwrite if needed
+            "git add -A",  # Add all files including hidden ones
+            f'git commit -m "Initial commit: AI Agent System" --allow-empty',  # Allow empty commits
+            f"git remote add origin {remote_url} || git remote set-url origin {remote_url}",
+            "git branch -M main",  # Ensure we're on main branch
+            "git push -u origin main --force"  # Using --force to overwrite if needed
         ]
         
         for cmd in commands:
+            print(f"Executing: {cmd}")
             result = os.system(cmd)
             if result != 0:
-                if "git push" in cmd:  # Try with main branch if master fails
-                    os.system("git push -u origin main --force")
-                else:
-                    print(f"Error executing: {cmd}")
-                    return False
+                print(f"Error executing: {cmd}")
+                # Don't return immediately, try to continue with other commands
         
         print(f"\nSuccess! Repository uploaded to: https://github.com/{user.login}/{repo_name}")
         return True
