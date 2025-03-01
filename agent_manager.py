@@ -2,13 +2,14 @@ import subprocess
 import psutil
 import os
 import signal
+import sys
 from logger_config import logger
 
 class AgentManager:
     def __init__(self):
         self.agent_process = None
         self.agent_names = ["Scout", "Editor", "Uploader", "Clicker", "Transaction"]
-        
+
     def start_agents(self):
         """Start the AI agents"""
         try:
@@ -48,3 +49,14 @@ class AgentManager:
         """Get status of all agents"""
         is_running = self.is_running()
         return {agent: is_running for agent in self.agent_names}
+
+    def create_folder(self, folder_name):
+        """Create a new folder in the workspace"""
+        try:
+            folder_path = os.path.join(os.getcwd(), folder_name)
+            os.makedirs(folder_path, exist_ok=True)
+            logger.info(f"Created folder: {folder_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create folder: {e}")
+            return False
