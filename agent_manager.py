@@ -4,7 +4,7 @@ import os
 import signal
 import sys
 from logger_config import logger
-from database import Session, AgentStatus, CodeSnippet, DeploymentLog, AgentTask
+from database import Session, AgentStatus, CodeSnippet, DeploymentLog, AgentTask, WorkspaceFolder
 from datetime import datetime
 from agent_interaction import AgentInteraction
 
@@ -13,6 +13,28 @@ class AgentManager:
         self.agent_process = None
         self.agent_names = ["Scout", "Editor", "Uploader", "Clicker", "Transaction"]
         self.interactions = {name: AgentInteraction(name) for name in self.agent_names}
+        self.workspace_path = os.path.join(os.getcwd(), "agent_workspace")
+        self._ensure_workspace()
+
+    def _ensure_workspace(self):
+        """Ensure workspace directories exist"""
+        try:
+            # Create main workspace
+            os.makedirs(self.workspace_path, exist_ok=True)
+
+            # Create agent directories
+            for agent in self.agent_names:
+                agent_path = os.path.join(self.workspace_path, agent)
+                os.makedirs(agent_path, exist_ok=True)
+
+                # Create subdirectories for each agent
+                os.makedirs(os.path.join(agent_path, "models"), exist_ok=True)
+                os.makedirs(os.path.join(agent_path, "data"), exist_ok=True)
+                os.makedirs(os.path.join(agent_path, "logs"), exist_ok=True)
+
+            logger.info("Workspace directories created successfully")
+        except Exception as e:
+            logger.error(f"Error creating workspace: {e}")
 
     def start_agents(self):
         """Start the AI agents"""
@@ -22,7 +44,8 @@ class AgentManager:
                 self.agent_process = subprocess.Popen(
                     [sys.executable, script_path],
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
+                    stderr=subprocess.PIPE,
+                    cwd=self.workspace_path  # Run in workspace directory
                 )
                 self._update_agent_statuses(True)
                 logger.info("Agents started successfully")
@@ -51,7 +74,7 @@ class AgentManager:
             return self.agent_process.poll() is None
         return False
 
-    def _update_agent_statuses(self, status, task=None):
+    def _update_agent_statuses(self, status):
         """Update agent statuses in database"""
         try:
             session = Session()
@@ -62,14 +85,12 @@ class AgentManager:
 
                 if agent_status:
                     agent_status.status = status
-                    if task:
-                        agent_status.current_task = task
                     agent_status.last_updated = datetime.utcnow()
                 else:
                     agent_status = AgentStatus(
                         agent_name=agent_name,
                         status=status,
-                        current_task=task if task else "Idle"
+                        current_task="Idle"
                     )
                     session.add(agent_status)
 
@@ -77,34 +98,6 @@ class AgentManager:
             session.close()
         except Exception as e:
             logger.error(f"Error updating agent statuses: {e}")
-
-    def get_agent_statuses(self):
-        """Get status of all agents from database"""
-        try:
-            session = Session()
-            statuses = {}
-            for agent_name in self.agent_names:
-                status = session.query(AgentStatus).filter_by(
-                    agent_name=agent_name
-                ).first()
-                if status:
-                    statuses[agent_name] = {
-                        'status': status.status,
-                        'task': status.current_task,
-                        'last_updated': status.last_updated
-                    }
-                else:
-                    statuses[agent_name] = {
-                        'status': False,
-                        'task': 'Not initialized',
-                        'last_updated': None
-                    }
-            session.close()
-            return statuses
-        except Exception as e:
-            logger.error(f"Error getting agent statuses: {e}")
-            return {agent: {'status': False, 'task': 'Error', 'last_updated': None}
-                   for agent in self.agent_names}
 
     def agent_message(self, agent_name, message):
         """Send a message from an agent"""
@@ -116,9 +109,11 @@ class AgentManager:
         """Save a code snippet with proper formatting"""
         try:
             session = Session()
+
             # Format code as shown in the logs
             formatted_content = self.interactions[agent_name].code_block(content, filename)
 
+            # Save code snippet
             snippet = CodeSnippet(
                 filename=filename,
                 content=formatted_content,
@@ -136,6 +131,12 @@ class AgentManager:
                 result=f"Saved {filename}"
             )
             session.add(task)
+
+            # Also save to workspace
+            agent_code_path = os.path.join(self.workspace_path, agent_name, "code")
+            os.makedirs(agent_code_path, exist_ok=True)
+            with open(os.path.join(agent_code_path, filename), 'w') as f:
+                f.write(content)
 
             session.commit()
             session.close()
@@ -180,6 +181,24 @@ class AgentManager:
             logger.error(f"Error getting code snippets: {e}")
             return []
 
+    def create_folder(self, folder_name):
+        """Create a new folder in the workspace"""
+        try:
+            folder_path = os.path.join(self.workspace_path, folder_name)
+            os.makedirs(folder_path, exist_ok=True)
+
+            session = Session()
+            workspace_folder = WorkspaceFolder(folder_name=folder_name)
+            session.add(workspace_folder)
+            session.commit()
+            session.close()
+
+            logger.info(f"Created folder: {folder_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create folder: {e}")
+            return False
+
     def deploy_to_github(self, agent_name, files, commit_message):
         """Deploy code to GitHub"""
         try:
@@ -222,21 +241,3 @@ class AgentManager:
         except Exception as e:
             logger.error(f"Error getting deployment logs: {e}")
             return []
-
-    def create_folder(self, folder_name):
-        """Create a new folder in the workspace"""
-        try:
-            folder_path = os.path.join(os.getcwd(), folder_name)
-            os.makedirs(folder_path, exist_ok=True)
-
-            session = Session()
-            workspace_folder = WorkspaceFolder(folder_name=folder_name)
-            session.add(workspace_folder)
-            session.commit()
-            session.close()
-
-            logger.info(f"Created folder: {folder_name}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to create folder: {e}")
-            return False
