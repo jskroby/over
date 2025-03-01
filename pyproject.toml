@@ -13,6 +13,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "python-dotenv>=1.0.1",
     "requests>=2.32.3",
+    "schedule>=1.2.2",
     "sqlalchemy>=2.0.38",
     "streamlit>=1.42.2",
 ]

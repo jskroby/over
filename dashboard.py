@@ -11,6 +11,8 @@ from system_monitor import SystemMonitor
 import logger_config
 import logging
 from database import init_db
+from task_scheduler import TaskScheduler
+from datetime import datetime, timedelta
 
 # Initialize database
 init_db()
@@ -71,6 +73,8 @@ st.markdown("""
 # Initialize managers
 agent_manager = AgentManager()
 system_monitor = SystemMonitor()
+task_scheduler = TaskScheduler()
+task_scheduler.start()
 
 # Store current metrics
 system_monitor.store_metrics()
@@ -171,6 +175,67 @@ for agent in agent_manager.agent_names:
         else:
             st.info("No conversation history yet")
 
+
+# Task Scheduling
+st.header("Task Scheduling")
+with st.expander("Schedule Tasks", expanded=True):
+    schedule_tabs = st.tabs(["Create Task", "View Tasks"])
+
+    with schedule_tabs[0]:
+        st.subheader("Create New Task")
+        task_agent = st.selectbox("Select Agent", agent_manager.agent_names, key="schedule_agent")
+        task_name = st.text_input("Task Name")
+        task_description = st.text_area("Task Description")
+        schedule_type = st.selectbox(
+            "Schedule Type",
+            ["once", "daily", "weekly", "monthly"],
+            key="schedule_type"
+        )
+
+        # Schedule time selection
+        schedule_date = st.date_input("Schedule Date")
+        schedule_time = st.time_input("Schedule Time")
+        schedule_datetime = datetime.combine(schedule_date, schedule_time)
+
+        # Task parameters
+        st.subheader("Task Parameters")
+        param_key = st.text_input("Parameter Name")
+        param_value = st.text_input("Parameter Value")
+        parameters = {param_key: param_value} if param_key and param_value else {}
+
+        if st.button("Schedule Task"):
+            if task_scheduler.add_task(
+                task_agent,
+                task_name,
+                task_description,
+                schedule_type,
+                schedule_datetime,
+                parameters
+            ):
+                st.success("Task scheduled successfully!")
+            else:
+                st.error("Failed to schedule task")
+
+    with schedule_tabs[1]:
+        st.subheader("Scheduled Tasks")
+        view_agent = st.selectbox("Filter by Agent", ["All"] + agent_manager.agent_names)
+
+        tasks = task_scheduler.get_scheduled_tasks(
+            None if view_agent == "All" else view_agent
+        )
+
+        if tasks:
+            for task in tasks:
+                with st.expander(f"{task.task_name} ({task.agent_name})"):
+                    st.write(f"Description: {task.task_description}")
+                    st.write(f"Schedule: {task.schedule_type}")
+                    st.write(f"Next Run: {task.next_run}")
+                    st.write(f"Last Run: {task.last_run or 'Never'}")
+                    st.write(f"Status: {'Active' if task.is_active else 'Inactive'}")
+                    if task.parameters:
+                        st.write("Parameters:", task.parameters)
+        else:
+            st.info("No scheduled tasks found")
 
 # Logs
 with st.expander("Logs", expanded=False):

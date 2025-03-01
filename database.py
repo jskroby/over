@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text, LargeBinary
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text, LargeBinary, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -45,8 +45,8 @@ class CodeSnippet(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     agent_name = Column(String)
     status = Column(String)  # crawled, edited, deployed
-    binary_data = Column(LargeBinary, nullable=True)  # For storing binary files
-    file_type = Column(String)  # For storing file type information
+    binary_data = Column(LargeBinary, nullable=True)
+    file_type = Column(String)
 
 class AgentTask(Base):
     __tablename__ = 'agent_tasks'
@@ -59,6 +59,23 @@ class AgentTask(Base):
     completed_at = Column(DateTime, nullable=True)
     result = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
+    conversation_id = Column(String)
+    message_type = Column(String)
+
+class TaskSchedule(Base):
+    __tablename__ = 'task_schedules'
+
+    id = Column(Integer, primary_key=True)
+    agent_name = Column(String)
+    task_name = Column(String)
+    task_description = Column(Text)
+    schedule_type = Column(String)  # once, daily, weekly, monthly
+    schedule_time = Column(DateTime)
+    parameters = Column(JSON)  # Store task-specific parameters
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_run = Column(DateTime, nullable=True)
+    next_run = Column(DateTime)
 
 class DeploymentLog(Base):
     __tablename__ = 'deployment_logs'
