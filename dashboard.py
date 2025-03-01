@@ -8,6 +8,10 @@ from agent_manager import AgentManager
 from system_monitor import SystemMonitor
 import logger_config
 import logging
+from database import init_db
+
+# Initialize database
+init_db()
 
 # Page config
 st.set_page_config(
@@ -60,6 +64,9 @@ st.markdown("""
 agent_manager = AgentManager()
 system_monitor = SystemMonitor()
 
+# Store current metrics
+system_monitor.store_metrics()
+
 # Title and description
 st.title("🤖 AI Agent Control Dashboard")
 st.markdown("Monitor and control your AI agents running on Ollama")
@@ -68,17 +75,16 @@ st.markdown("Monitor and control your AI agents running on Ollama")
 st.header("System Status")
 col1, col2, col3 = st.columns(3)
 
-with col1:
-    ollama_status = system_monitor.check_ollama_status()
-    st.metric("Ollama Status", "Running 🟢" if ollama_status else "Stopped 🔴")
+metrics = system_monitor.get_latest_metrics()
+if metrics:
+    with col1:
+        st.metric("Ollama Status", "Running 🟢" if metrics.ollama_status else "Stopped 🔴")
 
-with col2:
-    cpu_usage = system_monitor.get_cpu_usage()
-    st.metric("CPU Usage", f"{cpu_usage}%")
+    with col2:
+        st.metric("CPU Usage", f"{metrics.cpu_usage}%")
 
-with col3:
-    memory_usage = system_monitor.get_memory_usage()
-    st.metric("Memory Usage", f"{memory_usage}%")
+    with col3:
+        st.metric("Memory Usage", f"{metrics.memory_usage}%")
 
 # Folder Creation Section
 st.header("Folder Management")
